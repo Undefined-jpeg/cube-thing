@@ -23,14 +23,20 @@ public class Shader {
     private final String vertexSource = "#version 330 core\n" +
             "layout (location = 0) in vec3 aPos;\n" +
             "layout (location = 1) in vec2 aTexCoord;\n" +
+            "layout (location = 2) in float aFace;\n" +
             "out vec2 TexCoord;\n" +
             "uniform mat4 model;\n" +
             "uniform mat4 view;\n" +
             "uniform mat4 projection;\n" +
-            "uniform float texOffset;\n" +
+            "uniform float texSide;\n" +
+            "uniform float texTop;\n" +
+            "uniform float texBottom;\n" +
             "void main() {\n" +
             "    gl_Position = projection * view * model * vec4(aPos, 1.0);\n" +
-            "    TexCoord = vec2((aTexCoord.x * 0.125) + texOffset, aTexCoord.y);\n" +
+            "    float index = texSide;\n" +
+            "    if (aFace > 0.5) index = texTop;\n" +
+            "    if (aFace > 1.5) index = texBottom;\n" +
+            "    TexCoord = vec2((aTexCoord.x + index) * 0.0625, aTexCoord.y);\n" +
             "}";
 
     private final String fragmentSource = "#version 330 core\n" +
@@ -40,7 +46,7 @@ public class Shader {
             "uniform vec4 colorTint;\n" +
             "void main() {\n" +
             "    vec4 texColor = texture(ourTexture, TexCoord);\n" +
-            "    if(texColor.a < 0.1) discard;\n" + // Transparent pixels (leaves)
+            "    if(texColor.a < 0.1) discard;\n" +
             "    FragColor = texColor * colorTint;\n" +
             "}";
 

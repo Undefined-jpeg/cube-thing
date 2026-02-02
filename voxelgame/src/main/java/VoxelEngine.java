@@ -8,7 +8,7 @@ import org.joml.Matrix4f;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
 import static org.lwjgl.glfw.GLFW.GLFW_CONTEXT_VERSION_MAJOR;
-import static org.lwjgl.glfw.GLFW.GLFW_CONTEXT_VERSION_MINOR; // For Door Map
+import static org.lwjgl.glfw.GLFW.GLFW_CONTEXT_VERSION_MINOR;
 import static org.lwjgl.glfw.GLFW.GLFW_CURSOR;
 import static org.lwjgl.glfw.GLFW.GLFW_CURSOR_DISABLED;
 import static org.lwjgl.glfw.GLFW.GLFW_CURSOR_NORMAL;
@@ -71,7 +71,6 @@ public class VoxelEngine {
     private List<Vector4f> blocks = new ArrayList<>();
     private List<ItemEntity> droppedItems = new ArrayList<>();
     
-    // DOOR STATE MAP: Position -> isOpen (true/false)
     private Map<Vector3f, Boolean> doorStates = new HashMap<>();
 
     private Inventory inventory = new Inventory();
@@ -113,7 +112,7 @@ public class VoxelEngine {
         glEnable(GL_DEPTH_TEST);
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-        glClearColor(0.05f, 0.05f, 0.1f, 1.0f); // Dark Night Sky to show off torches
+        glClearColor(0.5f, 0.8f, 1.0f, 1.0f); // Sky Blue
 
         Texture atlas = new Texture();
         Shader shader = new Shader();
@@ -121,14 +120,20 @@ public class VoxelEngine {
         Camera camera = new Camera(window);
         PlayerRenderer playerRenderer = new PlayerRenderer();
 
-        // Mesh (Cube)
+        // Mesh (Cube) with Face IDs (0=Side, 1=Top, 2=Bottom)
         float[] vertices = {
-            -0.5f,-0.5f,-0.5f, 0,0,  0.5f,-0.5f,-0.5f, 1,0,  0.5f, 0.5f,-0.5f, 1,1,  0.5f, 0.5f,-0.5f, 1,1, -0.5f, 0.5f,-0.5f, 0,1, -0.5f,-0.5f,-0.5f, 0,0,
-            -0.5f,-0.5f, 0.5f, 0,0,  0.5f,-0.5f, 0.5f, 1,0,  0.5f, 0.5f, 0.5f, 1,1,  0.5f, 0.5f, 0.5f, 1,1, -0.5f, 0.5f, 0.5f, 0,1, -0.5f,-0.5f, 0.5f, 0,0,
-            -0.5f, 0.5f, 0.5f, 1,0, -0.5f, 0.5f,-0.5f, 1,1, -0.5f,-0.5f,-0.5f, 0,1, -0.5f,-0.5f,-0.5f, 0,1, -0.5f,-0.5f, 0.5f, 0,0, -0.5f, 0.5f, 0.5f, 1,0,
-             0.5f, 0.5f, 0.5f, 1,0,  0.5f, 0.5f,-0.5f, 1,1,  0.5f,-0.5f,-0.5f, 0,1,  0.5f,-0.5f,-0.5f, 0,1,  0.5f,-0.5f, 0.5f, 0,0,  0.5f, 0.5f, 0.5f, 1,0,
-            -0.5f,-0.5f,-0.5f, 0,1,  0.5f,-0.5f,-0.5f, 1,1,  0.5f,-0.5f, 0.5f, 1,0,  0.5f,-0.5f, 0.5f, 1,0, -0.5f,-0.5f, 0.5f, 0,0, -0.5f,-0.5f,-0.5f, 0,1,
-            -0.5f, 0.5f,-0.5f, 0,1,  0.5f, 0.5f,-0.5f, 1,1,  0.5f, 0.5f, 0.5f, 1,0,  0.5f, 0.5f, 0.5f, 1,0, -0.5f, 0.5f, 0.5f, 0,0, -0.5f, 0.5f,-0.5f, 0,1
+            // BACK (Side)
+            -0.5f,-0.5f,-0.5f, 0,0, 0,  0.5f,-0.5f,-0.5f, 1,0, 0,  0.5f, 0.5f,-0.5f, 1,1, 0,  0.5f, 0.5f,-0.5f, 1,1, 0, -0.5f, 0.5f,-0.5f, 0,1, 0, -0.5f,-0.5f,-0.5f, 0,0, 0,
+            // FRONT (Side)
+            -0.5f,-0.5f, 0.5f, 0,0, 0,  0.5f,-0.5f, 0.5f, 1,0, 0,  0.5f, 0.5f, 0.5f, 1,1, 0,  0.5f, 0.5f, 0.5f, 1,1, 0, -0.5f, 0.5f, 0.5f, 0,1, 0, -0.5f,-0.5f, 0.5f, 0,0, 0,
+            // LEFT (Side)
+            -0.5f, 0.5f, 0.5f, 1,0, 0, -0.5f, 0.5f,-0.5f, 1,1, 0, -0.5f,-0.5f,-0.5f, 0,1, 0, -0.5f,-0.5f,-0.5f, 0,1, 0, -0.5f,-0.5f, 0.5f, 0,0, 0, -0.5f, 0.5f, 0.5f, 1,0, 0,
+            // RIGHT (Side)
+             0.5f, 0.5f, 0.5f, 1,0, 0,  0.5f, 0.5f,-0.5f, 1,1, 0,  0.5f,-0.5f,-0.5f, 0,1, 0,  0.5f,-0.5f,-0.5f, 0,1, 0,  0.5f,-0.5f, 0.5f, 0,0, 0,  0.5f, 0.5f, 0.5f, 1,0, 0,
+            // BOTTOM
+            -0.5f,-0.5f,-0.5f, 0,1, 2,  0.5f,-0.5f,-0.5f, 1,1, 2,  0.5f,-0.5f, 0.5f, 1,0, 2,  0.5f,-0.5f, 0.5f, 1,0, 2, -0.5f,-0.5f, 0.5f, 0,0, 2, -0.5f,-0.5f,-0.5f, 0,1, 2,
+            // TOP
+            -0.5f, 0.5f,-0.5f, 0,1, 1,  0.5f, 0.5f,-0.5f, 1,1, 1,  0.5f, 0.5f, 0.5f, 1,0, 1,  0.5f, 0.5f, 0.5f, 1,0, 1, -0.5f, 0.5f, 0.5f, 0,0, 1, -0.5f, 0.5f,-0.5f, 0,1, 1
         };
 
         int vao = glGenVertexArrays();
@@ -136,8 +141,9 @@ public class VoxelEngine {
         glBindVertexArray(vao);
         org.lwjgl.opengl.GL15.glBindBuffer(GL_ARRAY_BUFFER, vbo);
         org.lwjgl.opengl.GL15.glBufferData(GL_ARRAY_BUFFER, vertices, GL_STATIC_DRAW);
-        glVertexAttribPointer(0, 3, GL_FLOAT, false, 5 * Float.BYTES, 0); glEnableVertexAttribArray(0);
-        glVertexAttribPointer(1, 2, GL_FLOAT, false, 5 * Float.BYTES, 3 * Float.BYTES); glEnableVertexAttribArray(1);
+        glVertexAttribPointer(0, 3, GL_FLOAT, false, 6 * Float.BYTES, 0); glEnableVertexAttribArray(0);
+        glVertexAttribPointer(1, 2, GL_FLOAT, false, 6 * Float.BYTES, 3 * Float.BYTES); glEnableVertexAttribArray(1);
+        glVertexAttribPointer(2, 1, GL_FLOAT, false, 6 * Float.BYTES, 5 * Float.BYTES); glEnableVertexAttribArray(2);
 
         Matrix4f model = new Matrix4f();
         float lastFrame = 0.0f, lastClick = 0.0f, lastToggle = 0.0f, lastDrop = 0.0f;
@@ -147,12 +153,9 @@ public class VoxelEngine {
             float delta = time - lastFrame;
             lastFrame = time;
 
-            // --- DEBUG COORDS ---
-            // Update window title with integer coordinates
             String title = String.format("Pos: %d %d %d", (int)camera.position.x, (int)camera.position.y, (int)camera.position.z);
             glfwSetWindowTitle(window, title);
 
-            // --- INPUTS ---
             if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS && time - lastToggle > 0.3f) {
                 isInventoryOpen = !isInventoryOpen;
                 glfwSetInputMode(window, GLFW_CURSOR, isInventoryOpen ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_DISABLED);
@@ -163,13 +166,12 @@ public class VoxelEngine {
                 lastF5 = time;
             }
 
-            // Drop Item (Q)
             if (!isInventoryOpen && glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS && time - lastDrop > 0.2f) {
                 ItemStack stack = inventory.items[selectedSlot];
                 if (stack != null) { 
-                    inventory.consume(selectedSlot); // Remove 1 from stack
+                    inventory.consume(selectedSlot);
                     Vector3f dropPos = new Vector3f(camera.position).add(0, -0.5f, 0);
-                    Vector3f dropVel = camera.getDirection().mul(10.0f); 
+                    Vector3f dropVel = camera.getDirection().mul(5.0f);
                     droppedItems.add(new ItemEntity(dropPos, dropVel, stack.type));
                 }
                 lastDrop = time;
@@ -179,55 +181,68 @@ public class VoxelEngine {
                 camera.update(window, delta, blocks);
                 for(int i=0; i<8; i++) if(glfwGetKey(window, GLFW_KEY_1 + i) == GLFW_PRESS) selectedSlot = i;
                 
-                // Right Click: PLACE or INTERACT
                 if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_2) == GLFW_PRESS && time - lastClick > 0.2f) { 
-                    Vector3f pos = raycast(camera, true); // Get block adjacent (empty space)
-                    Vector3f hitBlock = raycast(camera, false); // Get actual block hit
+                    Vector3f pos = raycast(camera, true);
+                    Vector3f hitBlock = raycast(camera, false);
 
-                    // 1. Check for DOOR INTERACTION first
                     if (hitBlock != null) {
-                        // Check if we hit a door
                         for(Vector4f b : blocks) {
                             if (b.w == 9 && (int)b.x == (int)hitBlock.x && (int)b.y == (int)hitBlock.y && (int)b.z == (int)hitBlock.z) {
-                                Vector3f key = new Vector3f(b.x, b.y, b.z);
-                                boolean open = doorStates.getOrDefault(key, false);
-                                doorStates.put(key, !open); // Toggle
+                                toggleDoor(b.x, b.y, b.z, !doorStates.getOrDefault(new Vector3f(b.x, b.y, b.z), false));
                                 lastClick = time;
-                                break; // Stop processing placement
+                                break;
                             }
                         }
                     }
 
-                    // 2. PLACEMENT
-                    // Only place if we didn't just toggle a door
                     if (time - lastClick > 0.2f && pos != null) {
-                        ItemStack stack = inventory.items[selectedSlot];
-                        if (stack != null) {
-                            if (stack.type == 9) { 
-                                // DOOR PLACEMENT (Special: Needs 2 blocks high)
-                                blocks.add(new Vector4f(pos, 9)); // Bottom
-                                doorStates.put(pos, false); // Start Closed
-                                inventory.consume(selectedSlot);
-                            } else {
-                                // NORMAL PLACEMENT
-                                blocks.add(new Vector4f(pos, stack.type));
-                                inventory.consume(selectedSlot);
+                        // COLLISION CHECK
+                        boolean collides = false;
+                        if (Math.abs(pos.x - camera.position.x) < 0.7f &&
+                            Math.abs(pos.z - camera.position.z) < 0.7f &&
+                            pos.y > camera.position.y - 2.0f && pos.y < camera.position.y + 0.5f) {
+                            collides = true;
+                        }
+
+                        if (!collides) {
+                            ItemStack stack = inventory.items[selectedSlot];
+                            if (stack != null) {
+                                if (stack.type == 9) {
+                                    blocks.add(new Vector4f(pos.x, pos.y, pos.z, 9));
+                                    blocks.add(new Vector4f(pos.x, pos.y + 1, pos.z, 9));
+                                    doorStates.put(new Vector3f(pos.x, pos.y, pos.z), false);
+                                    doorStates.put(new Vector3f(pos.x, pos.y + 1, pos.z), false);
+                                    inventory.consume(selectedSlot);
+                                } else {
+                                    blocks.add(new Vector4f(pos, stack.type));
+                                    inventory.consume(selectedSlot);
+                                }
                             }
                         }
                     }
                     lastClick = time;
                 }
                 
-                // Left Click: BREAK
                 if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_1) == GLFW_PRESS && time - lastClick > 0.2f) { 
                     Vector3f pos = raycast(camera, false);
                     if (pos != null) {
                         for(int i=0; i<blocks.size(); i++) {
                              Vector4f b = blocks.get(i);
-                             if(b.equals(new Vector4f(pos, b.w))) { 
+                             if((int)b.x == (int)pos.x && (int)b.y == (int)pos.y && (int)b.z == (int)pos.z) {
                                  droppedItems.add(new ItemEntity(new Vector3f(b.x, b.y, b.z), new Vector3f(0,2,0), (int)b.w));
+                                 if (b.w == 9) { // Door half breakage
+                                     for(int j=0; j<blocks.size(); j++) {
+                                         Vector4f o = blocks.get(j);
+                                         if (i!=j && o.w == 9 && (int)o.x == (int)b.x && (int)o.z == (int)b.z && Math.abs((int)o.y - (int)b.y) == 1) {
+                                             blocks.remove(j);
+                                             doorStates.remove(new Vector3f(o.x, o.y, o.z));
+                                             if (j < i) i--;
+                                             break;
+                                         }
+                                     }
+                                 }
                                  blocks.remove(i); 
-                                 doorStates.remove(new Vector3f(b.x, b.y, b.z)); // Clean up door memory
+                                 doorStates.remove(new Vector3f(b.x, b.y, b.z));
                                  break; 
                              }
                         }
@@ -244,17 +259,15 @@ public class VoxelEngine {
                 }
             }
 
-            // --- ENTITY UPDATE ---
             Iterator<ItemEntity> it = droppedItems.iterator();
             while(it.hasNext()) {
                 ItemEntity item = it.next();
                 item.update(delta, blocks);
-                if (item.pickupDelay <= 0 && item.position.distance(camera.position) < 2.5f) {
+                if (item.pickupDelay <= 0 && item.position.distance(camera.position) < 2.0f) {
                     if (inventory.add(item.type)) it.remove(); 
                 }
             }
 
-            // --- RENDER ---
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
             shader.bind();
             atlas.bind();
@@ -267,58 +280,45 @@ public class VoxelEngine {
 
                 glBindVertexArray(vao);
                 
-                // RENDER BLOCKS (With Lighting!)
                 for(Vector4f b : blocks) {
                     int id = (int)b.w;
-                    
-                    // --- LIGHTING CALCULATIONS ---
-                    // Default light: 0.5 (Shadow)
-                    // If block is a Torch (8), it is 1.0 (Bright)
-                    // If near a Torch, it is 1.0
-                    float brightness = 0.5f;
+                    BlockData.Block info = BlockData.get(id);
+                    float brightness = 0.7f;
                     if (id == 8) brightness = 1.0f; 
                     else {
-                        // Check distance to all torches
                         for(Vector4f check : blocks) {
-                            if (check.w == 8) { // Is Torch?
+                            if (check.w == 8) {
                                 float dist = new Vector3f(b.x, b.y, b.z).distance(new Vector3f(check.x, check.y, check.z));
-                                if (dist < 6.0f) { // Torch Range
-                                    brightness = 1.0f;
-                                    break;
-                                }
+                                if (dist < 6.0f) { brightness = 1.0f; break; }
                             }
                         }
                     }
                     shader.setUniform("colorTint", brightness, brightness, brightness, 1.0f);
 
                     model.identity().translate(b.x, b.y, b.z);
-                    
-                    // DOOR LOGIC
                     if (id == 9) {
-                         boolean isOpen = doorStates.getOrDefault(new Vector3f(b.x, b.y, b.z), false);
-                         if (isOpen) {
-                             // Rotate around "hinge" (approximate)
-                             model.translate(-0.4f, 0, 0.4f).rotate((float)Math.toRadians(90), 0, 1, 0);
+                         if (doorStates.getOrDefault(new Vector3f(b.x, b.y, b.z), false)) {
+                             model.translate(-0.45f, 0, 0.45f).rotate((float)Math.toRadians(90), 0, 1, 0);
                          }
+                         model.scale(0.15f, 1.0f, 1.0f);
                     }
-                    // TORCH LOGIC
-                    if (id == 8) {
-                        model.scale(0.2f, 0.8f, 0.2f); // Make torch thin
-                    }
+                    if (id == 8) model.scale(0.2f, 0.8f, 0.2f);
 
                     shader.setUniform("model", model);
-                    shader.setUniform("texOffset", b.w * 0.125f);
-                    
-                    // Draw (Sort transparents later if strictly needed, but mixing is okay for now)
+                    shader.setUniform("texSide", (float)info.texSide);
+                    shader.setUniform("texTop", (float)info.texTop);
+                    shader.setUniform("texBottom", (float)info.texBottom);
                     glDrawArrays(GL_TRIANGLES, 0, 36);
                 }
 
-                // Render Dropped Items
-                shader.setUniform("colorTint", 1.0f, 1.0f, 1.0f, 1.0f); // Full bright
+                shader.setUniform("colorTint", 1.0f, 1.0f, 1.0f, 1.0f);
                 for(ItemEntity item : droppedItems) {
+                    BlockData.Block info = BlockData.get(item.type);
                     model.identity().translate(item.position).rotate((float)glfwGetTime(), 0, 1, 0).scale(0.25f);
                     shader.setUniform("model", model);
-                    shader.setUniform("texOffset", item.type * 0.125f);
+                    shader.setUniform("texSide", (float)info.texSide);
+                    shader.setUniform("texTop", (float)info.texTop);
+                    shader.setUniform("texBottom", (float)info.texBottom);
                     glDrawArrays(GL_TRIANGLES, 0, 36);
                 }
 
@@ -330,11 +330,14 @@ public class VoxelEngine {
                 if (!isInventoryOpen && !thirdPerson) {
                     ItemStack held = inventory.items[selectedSlot];
                     if (held != null) {
+                        BlockData.Block info = BlockData.get(held.type);
                         glClear(GL_DEPTH_BUFFER_BIT); 
                         model.identity().translate(0.6f, -0.7f, -1.0f).rotate((float)Math.toRadians(35), 0, 1, 0).scale(0.4f);
                         shader.setUniform("model", model);
                         shader.setUniform("view", new Matrix4f().identity());
-                        shader.setUniform("texOffset", held.type * 0.125f);
+                        shader.setUniform("texSide", (float)info.texSide);
+                        shader.setUniform("texTop", (float)info.texTop);
+                        shader.setUniform("texBottom", (float)info.texBottom);
                         glDrawArrays(GL_TRIANGLES, 0, 36);
                     }
                 }
@@ -345,6 +348,14 @@ public class VoxelEngine {
             }
             glfwSwapBuffers(window);
             glfwPollEvents();
+        }
+    }
+
+    private void toggleDoor(float x, float y, float z, boolean open) {
+        for(Vector4f b : blocks) {
+            if (b.w == 9 && (int)b.x == (int)x && (int)b.z == (int)z && Math.abs((int)b.y - (int)y) <= 1) {
+                doorStates.put(new Vector3f(b.x, b.y, b.z), open);
+            }
         }
     }
 

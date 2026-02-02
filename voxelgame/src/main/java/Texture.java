@@ -1,4 +1,9 @@
 import java.nio.ByteBuffer;
+import java.io.InputStream;
+import java.nio.channels.Channels;
+import java.nio.channels.ReadableByteChannel;
+import org.lwjgl.BufferUtils;
+import org.lwjgl.stb.STBImage;
 
 import static org.lwjgl.opengl.GL11.GL_NEAREST;
 import static org.lwjgl.opengl.GL11.GL_RGBA;
@@ -19,56 +24,84 @@ public class Texture {
         glBindTexture(GL_TEXTURE_2D, id);
 
         int blockSize = 16;
-        int width = blockSize * 16; // Increased width for more blocks
+        int numSlots = 16;
+        int width = blockSize * numSlots;
         int height = blockSize;    
-        ByteBuffer buffer = ByteBuffer.allocateDirect(width * height * 4);
+        ByteBuffer atlasBuffer = BufferUtils.createByteBuffer(width * height * 4);
 
-        for (int y = 0; y < height; y++) {
-            for (int x = 0; x < width; x++) {
-                byte r=0, g=0, b=0, a=(byte)255;
-                
-                int blockType = x / blockSize; 
-                int px = x % blockSize; int py = y % blockSize;
-                int noise = (int)(Math.random() * 15); 
+        // Fill with black/transparent initially
+        for (int i = 0; i < atlasBuffer.capacity(); i++) atlasBuffer.put(i, (byte)0);
 
-                switch (blockType) {
-                    case 0: r=(byte)(30+noise); g=(byte)(160+noise); b=(byte)(30+noise); break; // Grass
-                    case 1: r=(byte)(80+noise); g=(byte)(50+noise); b=(byte)(20+noise); break; // Dirt
-                    case 2: r=(byte)60; g=(byte)40; b=(byte)10; break; // Log
-                    case 3: r=(byte)180; g=(byte)130; b=(byte)70; break; // Planks
-                    case 4: r=(byte)100; g=(byte)100; b=(byte)100; break; // Cobble
-                    case 5: r=(byte)120; g=(byte)120; b=(byte)120; break; // Stone
-                    case 6: if((px+py)%3!=0){r=30;g=120;b=30;}else{a=0;} break; // Leaves
-                    case 7: r=(byte)220; g=(byte)240; b=(byte)255; a=(byte)100; // Glass
-                            if(px==0||py==0) a=(byte)255; break;
-                    
-                    case 8: // TORCH (Yellow center, wood stick)
-                        if (px > 6 && px < 10 && py < 10) { // Stick
-                            r=(byte)100; g=(byte)60; b=(byte)20;
-                        } else if (px > 6 && px < 10 && py >= 10) { // Flame
-                            r=(byte)255; g=(byte)200; b=(byte)50;
-                        } else {
-                            a = 0; // Transparent air around torch
-                        }
-                        break;
-                        
-                    case 9: // DOOR (Wood with window)
-                        if (px < 2 || px > 13 || py < 1 || py > 14) { // Frame
-                            r=(byte)100; g=(byte)60; b=(byte)20;
-                        } else if (py > 9 && px > 4 && px < 11) { // Window
-                            r=(byte)150; g=(byte)200; b=(byte)255; a=(byte)150;
-                        } else { // Door panel
-                            r=(byte)140; g=(byte)90; b=(byte)40;
-                        }
-                        break;
-                }
-                buffer.put(r).put(g).put(b).put(a);
-            }
+        String[] textures = {
+            "grass-top.png",    // 0
+            "grass-side.png",   // 1
+            "dirt.png",         // 2
+            "log-side.png",     // 3
+            "log-top.png",      // 4
+            "planks.png",       // 5
+            "stone.png",        // 6
+            "stone1.png",       // 7
+            "glass.png",        // 8
+            "torch.png",        // 9
+            "placeholder.png"   // 10
+        };
+
+        for (int i = 0; i < textures.length; i++) {
+            loadToAtlas(textures[i], atlasBuffer, i, blockSize, width);
         }
-        buffer.flip();
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, buffer);
+
+        atlasBuffer.flip();
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, atlasBuffer);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     }
+
+    private void loadToAtlas(String fileName, ByteBuffer atlas, int slot, int blockSize, int atlasWidth) {
+        try {
+            InputStream is = getClass().getResourceAsStream("/textures/" + fileName);
+            if (is == null) {
+                System.err.println("Texture not found: " + fileName);
+                return;
+            }
+
+            ByteBuffer encoded = BufferUtils.createByteBuffer(16 * 1024);
+            try (ReadableByteChannel rbc = Channels.newChannel(is)) {
+                while (rbc.read(encoded) != -1) {
+                    if (encoded.remaining() == 0) {
+                        ByteBuffer newBuffer = BufferUtils.createByteBuffer(encoded.capacity() * 2);
+                        encoded.flip();
+                        newBuffer.put(encoded);
+                        encoded = newBuffer;
+                    }
+                }
+            }
+            encoded.flip();
+
+            int[] w = {0}, h = {0}, comp = {0};
+            ByteBuffer image = STBImage.stbi_load_from_memory(encoded, w, h, comp, 4);
+            if (image == null) {
+                System.err.println("Failed to load image: " + fileName + " - " + STBImage.stbi_failure_reason());
+                return;
+            }
+
+            for (int y = 0; y < Math.min(blockSize, h[0]); y++) {
+                for (int x = 0; x < Math.min(blockSize, w[0]); x++) {
+                    int atlasX = (slot * blockSize) + x;
+                    int atlasY = y;
+                    int atlasIdx = (atlasY * atlasWidth + atlasX) * 4;
+                    int imgIdx = (y * w[0] + x) * 4;
+                    
+                    atlas.put(atlasIdx, image.get(imgIdx));
+                    atlas.put(atlasIdx + 1, image.get(imgIdx + 1));
+                    atlas.put(atlasIdx + 2, image.get(imgIdx + 2));
+                    atlas.put(atlasIdx + 3, image.get(imgIdx + 3));
+                }
+            }
+            STBImage.stbi_image_free(image);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
     public void bind() { glBindTexture(GL_TEXTURE_2D, id); }
 }
