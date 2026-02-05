@@ -12,32 +12,33 @@ public class HUD {
     private int gap = 5;
     
     private int vao, vbo;
+    private PlayerRenderer playerRenderer = new PlayerRenderer();
 
     public HUD() {
-        // 2D Quad Mesh: x, y, z, u, v, face
         float[] vertices = {
-            0,0,0, 0,0, 0,  1,0,0, 1,0, 0,  1,1,0, 1,1, 0,
-            1,1,0, 1,1, 0,  0,1,0, 0,1, 0,  0,0,0, 0,0, 0
+            0,0,0, 0,0, 0, 1.0f,  1,0,0, 1,0, 0, 1.0f,  1,1,0, 1,1, 0, 1.0f,
+            1,1,0, 1,1, 0, 1.0f,  0,1,0, 0,1, 0, 1.0f,  0,0,0, 0,0, 0, 1.0f
         };
         vao = glGenVertexArrays();
         vbo = glGenBuffers();
         glBindVertexArray(vao);
         glBindBuffer(GL_ARRAY_BUFFER, vbo);
         glBufferData(GL_ARRAY_BUFFER, vertices, GL_STATIC_DRAW);
-        glVertexAttribPointer(0, 3, GL_FLOAT, false, 6 * Float.BYTES, 0); glEnableVertexAttribArray(0);
-        glVertexAttribPointer(1, 2, GL_FLOAT, false, 6 * Float.BYTES, 3 * Float.BYTES); glEnableVertexAttribArray(1);
-        glVertexAttribPointer(2, 1, GL_FLOAT, false, 6 * Float.BYTES, 5 * Float.BYTES); glEnableVertexAttribArray(2);
+        glVertexAttribPointer(0, 3, GL_FLOAT, false, 7 * Float.BYTES, 0); glEnableVertexAttribArray(0);
+        glVertexAttribPointer(1, 2, GL_FLOAT, false, 7 * Float.BYTES, 3 * Float.BYTES); glEnableVertexAttribArray(1);
+        glVertexAttribPointer(2, 1, GL_FLOAT, false, 7 * Float.BYTES, 5 * Float.BYTES); glEnableVertexAttribArray(2);
+        glVertexAttribPointer(3, 1, GL_FLOAT, false, 7 * Float.BYTES, 6 * Float.BYTES); glEnableVertexAttribArray(3);
     }
 
     public void render(Shader shader, Inventory inv, int selectedSlot, int width, int height, boolean isOpen, float mouseX, float mouseY) {
         glDisable(GL_DEPTH_TEST);
         glBindVertexArray(vao);
-        projection.identity().ortho(0, width, 0, height, -1, 1);
+        projection.identity().ortho(0, width, 0, height, -1, 100);
         shader.setUniform("projection", projection);
         shader.setUniform("view", new Matrix4f().identity());
+        shader.setUniform("colorTint", 1.0f, 1.0f, 1.0f, 1.0f);
 
         int hotbarY = 20;
-        int invY = 100;
         int startX = (width / 2) - ((slotSize + gap) * 8 / 2);
 
         // --- 1. RENDER HOTBAR ---
@@ -49,6 +50,13 @@ public class HUD {
 
         // --- 2. RENDER MAIN INVENTORY ---
         if (isOpen) {
+            // Background dim
+            drawRect(shader, 0, 0, width, height, 10, 0, 0, 0, 0.5f);
+
+            int invX = (width / 2) - 150;
+            int invY = (height / 2) - 150;
+
+            // Main Grid (8x3)
             for(int i=0; i<24; i++) {
                 int slotIdx = 8 + i;
                 ItemStack stack = inv.items[slotIdx];
@@ -56,10 +64,23 @@ public class HUD {
 
                 int col = i % 8;
                 int row = i / 8;
+                int xPos = invX + col * (slotSize + gap);
                 int yPos = invY + (2 - row) * (slotSize + gap);
                 
-                drawSlot(shader, startX + col*(slotSize+gap), yPos, typeID, false);
+                drawSlot(shader, xPos, yPos, typeID, false);
             }
+
+            // Armor Slots (4 vertical)
+            int armorX = invX - 50;
+            for (int i = 0; i < 4; i++) {
+                int slotIdx = 32 + i;
+                ItemStack stack = inv.items[slotIdx];
+                int typeID = (stack != null) ? stack.type : -1;
+                drawSlot(shader, armorX, invY + (3 - i) * (slotSize + gap), typeID, false);
+            }
+
+            // Character Preview
+            renderPlayerPreview(shader, invX + 250, invY + 100, mouseX, height - mouseY);
         }
 
         // --- 3. DRAGGED ITEM ---
@@ -76,16 +97,25 @@ public class HUD {
         glEnable(GL_DEPTH_TEST);
     }
 
+    private void renderPlayerPreview(Shader shader, float x, float y, float mx, float my) {
+        glEnable(GL_DEPTH_TEST);
+        glClear(GL_DEPTH_BUFFER_BIT);
+
+        float rotY = (x - mx) * 0.5f;
+        playerRenderer.render(shader, x, y, 50, rotY, false);
+
+        glDisable(GL_DEPTH_TEST);
+        // Reset matrices for ortho after 3D render
+        shader.setUniform("projection", projection);
+        shader.setUniform("view", new Matrix4f().identity());
+    }
+
     private void drawSlot(Shader s, int x, int y, int itemType, boolean selected) {
         float r = selected ? 1.0f : 0.3f;
         float g = selected ? 1.0f : 0.3f;
         float b = selected ? 1.0f : 0.3f;
         float alpha = selected ? 0.8f : 0.5f;
-
-        // Draw Slot Background
         drawRect(s, x, y, slotSize, slotSize, 10, r, g, b, alpha);
-
-        // Draw Item Icon
         if (itemType != -1) {
             drawItem(s, x + 4, y + 4, slotSize - 8, slotSize - 8, itemType);
         }
@@ -103,6 +133,10 @@ public class HUD {
         s.setUniform("texTop", (float)texIndex);
         s.setUniform("texBottom", (float)texIndex);
         s.setUniform("colorTint", r, g, b, a);
+        // New: need to pass brightness
+        // Actually, for HUD, let's just use 1.0.
+        // I need to update the VAO to have 7 floats if I want it to be perfectly consistent.
+        // Or I can use a separate VAO for HUD.
         glDrawArrays(GL_TRIANGLES, 0, 6);
     }
 }

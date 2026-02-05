@@ -43,7 +43,8 @@ public class Texture {
             "stone1.png",       // 7
             "glass.png",        // 8
             "torch.png",        // 9
-            "placeholder.png"   // 10
+            "placeholder.png",  // 10
+            "stone1.png"        // 11 (TNT)
         };
 
         for (int i = 0; i < textures.length; i++) {
