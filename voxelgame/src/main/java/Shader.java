@@ -24,30 +24,35 @@ public class Shader {
             "layout (location = 0) in vec3 aPos;\n" +
             "layout (location = 1) in vec2 aTexCoord;\n" +
             "layout (location = 2) in float aFace;\n" +
+            "layout (location = 3) in float aBrightness;\n" +
             "out vec2 TexCoord;\n" +
+            "out float Brightness;\n" +
             "uniform mat4 model;\n" +
             "uniform mat4 view;\n" +
             "uniform mat4 projection;\n" +
             "uniform float texSide;\n" +
             "uniform float texTop;\n" +
             "uniform float texBottom;\n" +
+            "uniform int usePerVertexTex;\n" +
             "void main() {\n" +
             "    gl_Position = projection * view * model * vec4(aPos, 1.0);\n" +
             "    float index = texSide;\n" +
             "    if (aFace > 0.5) index = texTop;\n" +
             "    if (aFace > 1.5) index = texBottom;\n" +
             "    TexCoord = vec2((aTexCoord.x + index) * 0.0625, aTexCoord.y);\n" +
+            "    Brightness = aBrightness;\n" +
             "}";
 
     private final String fragmentSource = "#version 330 core\n" +
             "out vec4 FragColor;\n" +
             "in vec2 TexCoord;\n" +
+            "in float Brightness;\n" +
             "uniform sampler2D ourTexture;\n" +
             "uniform vec4 colorTint;\n" +
             "void main() {\n" +
             "    vec4 texColor = texture(ourTexture, TexCoord);\n" +
             "    if(texColor.a < 0.1) discard;\n" +
-            "    FragColor = texColor * colorTint;\n" +
+            "    FragColor = texColor * colorTint * vec4(Brightness, Brightness, Brightness, 1.0);\n" +
             "}";
 
     public Shader() {
@@ -68,6 +73,7 @@ public class Shader {
     }
 
     public void setUniform(String name, float val) { glUniform1f(glGetUniformLocation(programId, name), val); }
+    public void setUniform(String name, int val) { org.lwjgl.opengl.GL20.glUniform1i(glGetUniformLocation(programId, name), val); }
     public void setUniform(String name, float r, float g, float b, float a) { glUniform4f(glGetUniformLocation(programId, name), r, g, b, a); }
 
     private void checkCompile(int shader) {

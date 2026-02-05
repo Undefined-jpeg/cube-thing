@@ -1,6 +1,6 @@
 public class Inventory {
-    public ItemStack[] items = new ItemStack[32];
-    public ItemStack draggingItem = null; // Object instead of int
+    public ItemStack[] items = new ItemStack[36]; // 32 main + 4 armor
+    public ItemStack draggingItem = null;
 
     public Inventory() {
         // Start with some items for testing

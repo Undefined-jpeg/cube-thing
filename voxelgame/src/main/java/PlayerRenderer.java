@@ -33,10 +33,7 @@ public class PlayerRenderer {
              .scale(w, h, d);
         
         s.setUniform("model", model);
-        s.setUniform("texSide", (float)tex);
-        s.setUniform("texTop", (float)tex);
-        s.setUniform("texBottom", (float)tex);
-        glDrawArrays(GL_TRIANGLES, 0, 36);
+        CubeMesh.draw(s, (float)tex, (float)tex, (float)tex);
     }
 
     private void drawBox(Shader s, float x, float y, float z, float w, float h, float d, float rotX, float rotY, int tex) {
@@ -44,9 +41,6 @@ public class PlayerRenderer {
              .rotate((float)Math.toRadians(-rotY), 0, 1, 0)
              .scale(w, h, d);
         s.setUniform("model", model);
-        s.setUniform("texSide", (float)tex);
-        s.setUniform("texTop", (float)tex);
-        s.setUniform("texBottom", (float)tex);
-        glDrawArrays(GL_TRIANGLES, 0, 36);
+        CubeMesh.draw(s, (float)tex, (float)tex, (float)tex);
     }
 }
